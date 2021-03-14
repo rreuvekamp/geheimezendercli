@@ -47,17 +47,20 @@ func main() {
 
 type stream struct {
 	title string
-	info  []string
-	urls  map[string]string
+	freq  string
+	phone string
+
+	location   string
+	streamInfo string
+
+	urls map[string]string
 }
 
 func printStreams(streams []stream) {
 	for i, stream := range streams {
 		fmt.Printf("%d -> %s\n", i, stream.title)
-		for _, info := range stream.info {
-			fmt.Printf("     %s\n", info)
-		}
-		fmt.Println("")
+		fmt.Printf("     %-15s %s\n", stream.location, stream.freq)
+		fmt.Printf("     %s\n\n", stream.phone)
 	}
 }
 
@@ -101,7 +104,9 @@ func fetchStreams() ([]stream, error) {
 }
 
 func parseStream(s *goquery.Selection) stream {
-	title := s.Find("#aantalbezoekers").Text()
+	streamInfo := s.Find("#aantalbezoekers").Text()
+	streamInfos := strings.SplitN(streamInfo, " ", 2)
+	streamInfos = trimAndExtend(streamInfos, 2)
 
 	infoEl := s.Find(".streamtitle")
 	info, err := infoEl.Html()
@@ -109,19 +114,32 @@ func parseStream(s *goquery.Selection) stream {
 		info = infoEl.Text()
 	}
 
-	infos := []string{}
-	for _, info := range strings.Split(info, "<br/>") {
-		cleaned := strings.TrimSpace(info)
-		if len(cleaned) == 0 {
-			continue
-		}
-
-		infos = append(infos, cleaned)
-	}
+	infos := strings.Split(info, "<br/>")
+	infos = trimAndExtend(infos, 3)
 
 	urls := parseURLs(s.Find(".images_online a"))
 
-	return stream{title, infos, urls}
+	return stream{
+		strings.TrimSpace(infos[1]),
+		strings.TrimSpace(infos[0]),
+		strings.TrimSpace(infos[2]),
+		streamInfos[0],
+		streamInfos[1],
+		urls}
+}
+
+func trimAndExtend(list []string, length int) []string {
+	output := make([]string, length)
+
+	for i, item := range list {
+		if i >= length {
+			break
+		}
+
+		output[i] = strings.TrimSpace(item)
+	}
+
+	return output
 }
 
 func parseURLs(s *goquery.Selection) map[string]string {
