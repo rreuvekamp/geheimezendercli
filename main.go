@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,13 @@ import (
 )
 
 func main() {
+	var (
+		player   = flag.String("player", "/usr/bin/mpv", "full filesystem path to the prefered player")
+		fileType = flag.String("filetype", "pls", "file type of the stream to play with the player")
+	)
+
+	flag.Parse()
+
 	streams, err := fetchStreams()
 	if err != nil {
 		fmt.Println("Error fetching streams")
@@ -37,7 +45,7 @@ func main() {
 		}
 	}
 
-	err = playStream(*chosenStream, "pls", "/usr/bin/mpv")
+	err = playStream(*chosenStream, *fileType, *player)
 	if err != nil {
 		fmt.Println("Error playing stream")
 		fmt.Println(err)
@@ -65,7 +73,10 @@ func printStreams(streams []stream) {
 }
 
 func playStream(stream stream, preferedFile string, player string) error {
-	file := stream.urls[preferedFile]
+	file, ok := stream.urls[preferedFile]
+	if !ok {
+		return fmt.Errorf("stream has no file with type: %s", preferedFile)
+	}
 
 	cmd := exec.Command(player, file)
 	cmd.Stderr = os.Stderr
@@ -87,7 +98,6 @@ func fetchStreams() ([]stream, error) {
 		return []stream{}, fmt.Errorf("status code error: %d %s", res.StatusCode, res.Status)
 	}
 
-	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		return []stream{}, err
@@ -95,7 +105,6 @@ func fetchStreams() ([]stream, error) {
 
 	streams := []stream{}
 
-	// Find the review items
 	doc.Find(".box").Each(func(i int, s *goquery.Selection) {
 		streams = append(streams, parseStream(s))
 	})
@@ -120,7 +129,7 @@ func parseStream(s *goquery.Selection) stream {
 	urls := parseURLs(s.Find(".images_online a"))
 
 	return stream{
-		strings.TrimSpace(infos[1]),
+		strings.Replace(strings.TrimSpace(infos[1]), "&amp;", "&", -1),
 		strings.TrimSpace(infos[0]),
 		strings.TrimSpace(infos[2]),
 		streamInfos[0],
