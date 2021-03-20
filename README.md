@@ -1,6 +1,6 @@
 # geheimezendercli
 
-Small command line program to play streams from https://geheimezender.com
+Small command line program to play online radio streams from https://geheimezender.com
 
 The streams are parsed by parsing the HTML output of https://geheimezender.com/streamdata-desktop.php
 

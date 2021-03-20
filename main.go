@@ -28,41 +28,33 @@ import (
 
 func main() {
 	var (
-		player   = flag.String("player", "/usr/bin/mpv", "full filesystem path to the prefered player")
-		fileType = flag.String("filetype", "pls", "file type of the stream to play with the player")
+		player   = flag.String("player", "/usr/bin/mpv", "full filesystem path to the preferred player")
+		fileType = flag.String("filetype", "pls", "file format to play from the multiple options the website gives (pls, ram, asx, qtl)")
 	)
 
 	flag.Parse()
 
 	streams, err := fetchStreams()
 	if err != nil {
-		fmt.Println("Error fetching streams")
+		fmt.Println("Error fetching streams:")
 		fmt.Println(err)
 		os.Exit(5)
 	}
 
-	printStreams(streams)
-
-	fmt.Print("Which would you like to play?\n> ")
-
-	var chosenStream *stream
-
-	for chosenStream == nil {
-		var i int
-		_, err := fmt.Scanf("%d\n", &i)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		if i < len(streams) && i >= 0 {
-			chosenStream = &streams[i]
-		}
+	if len(streams) == 0 {
+		fmt.Println("No streams could be fetched.")
+		os.Exit(7)
 	}
 
-	err = playStream(*chosenStream, *fileType, *player)
+	printStreams(streams)
+
+	chosenStream := chooseStream(streams)
+
+	fmt.Printf("\nPlaying %s\n", chosenStream.title)
+
+	err = playStream(chosenStream, *fileType, *player)
 	if err != nil {
-		fmt.Println("Error playing stream")
+		fmt.Println("Error playing stream:")
 		fmt.Println(err)
 		os.Exit(6)
 	}
@@ -85,6 +77,27 @@ func printStreams(streams []stream) {
 		fmt.Printf("     %-15s %s\n", stream.location, stream.freq)
 		fmt.Printf("     %s\n\n", stream.phone)
 	}
+}
+
+func chooseStream(streams []stream) stream {
+	var chosenStream *stream
+
+	for chosenStream == nil {
+		fmt.Print("Which would you like to play?\n> ")
+
+		var i int
+		_, err := fmt.Scanf("%d\n", &i)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		if i < len(streams) && i >= 0 {
+			chosenStream = &streams[i]
+		}
+	}
+
+	return *chosenStream
 }
 
 func playStream(stream stream, preferedFile string, player string) error {
